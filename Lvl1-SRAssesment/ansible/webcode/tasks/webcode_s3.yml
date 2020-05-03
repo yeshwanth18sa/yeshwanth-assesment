@@ -1,0 +1,9 @@
+---
+  - name: web code deployment from s3
+    shell: aws s3 cp s3://{{buckeyname}}/web_code/ var/www/html
+  
+  - name: Restart nginx
+    service:
+      name: nginx
+      state: restarted
+

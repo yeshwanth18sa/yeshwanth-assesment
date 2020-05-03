@@ -1,0 +1,42 @@
+---
+# ECS variables
+
+my_ecs_cluster_name: cluster_name
+
+my_ecs_task_definition: task_name
+
+
+# Name for Container
+container_name : "container-1"
+
+#Container CPU Value
+container_cpu: 1024
+
+#Container Memory value
+container_memory: 2048
+
+#ECR_Repo URL to pull the Image from repositery
+ecr_image_repo: "17391239183.dkr.ecr.us-east-1.amazonaws.com/ecr:latest"
+
+# Conatiner Enviornment 
+container_env: "dev"
+
+# Conatiner Port number
+container_port: 8080
+
+
+
+host_port: 80
+
+#ECS Cluster account_id_arn
+ecs_cluster_account_id_arn: "arn:aws:ecs:us-east-1:719410481090:cluster"
+
+container_targetarn: "arn:aws:elasticloadbalancing:us-east-1:31287398123102:targetgroup/target/idqjer03e48qpeo"
+
+my_ecs_service_name: "service1"
+
+my_ecs_service_version: 1
+
+my_ecs_task_definition_count: 1
+
+my_ecs_iam_role: "ecs_role"

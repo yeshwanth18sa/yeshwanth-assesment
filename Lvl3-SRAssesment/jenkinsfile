@@ -1,0 +1,93 @@
+#!/usr/bin/env groovy
+/
+app_repo =  'https://github.com/yeshwanth18sa/yeshwanth-assesment.git'
+
+
+pipeline {
+      agent { label 'jenkins_build_agent' }
+
+  
+      environment {
+         EMAIL_TO = 'test@test.com'
+         AWS_ACCOUNTID = '142351761141'
+         ECR_NAME = 'aws-ecr'
+ 
+      } 
+     
+      parameters {
+         choice choices: ['dev','uat','stg','prod'], description: 'Select Environment in which you want to deploy the code?', name: 'Environment'
+         listGitBranches branchFilter: '.*', credentialsId: 'githubpassword', defaultValue: '', name: 'APP_BRANCH', quickFilterEnabled: false, remoteURL: app_repo, selectedValue: 'NONE', sortMode: 'NONE', tagFilter: '.*', type: 'PT_BRANCH_TAG'
+         
+      }
+
+   stages {
+
+      // Multiple Stage Sections Defined
+      stage('cleanWorkSpace') {
+         
+            steps {
+               cleanWs()
+            }
+      }     
+      stage('checkout-code') {
+
+         steps {
+               checkout([$class: 'GitSCM', branches: [[name: "*/${params.Environment}"]], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'env-props-code']], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'githubpassword', url: app_repo]]])
+         }
+      }
+
+      stage ('compile code and build-docker-image') {
+
+
+         steps {
+            sh '''
+            set +x
+               sudo docker build -t ${ECR_NAME} .
+            
+               sudo docker tag ${ECR_NAME}:latest ${AWS_ACCOUNTID}.dkr.ecr.us-east-1.amazonaws.com/${ECR_NAME}:latest
+               sudo docker tag ${AWS_ACCOUNTID}.dkr.ecr.us-east-1.amazonaws.com/${ECR_NAME}:latest ${AWS_ACCOUNTID}.dkr.ecr.us-east-1.amazonaws.com/${ECR_NAME}:${BUILD_NUMBER}
+
+               sudo docker push ${AWS_ACCOUNTID}.dkr.ecr.us-east-1.amazonaws.com/${ECR_NAME}:latest
+               sudo docker push ${AWS_ACCOUNTID}.dkr.ecr.us-east-1.amazonaws.com/${ECR_NAME}:${BUILD_NUMBER}
+            '''
+         }
+      }
+
+      stage('run-ansible-playbook_to_deploy_ecs') {
+         steps {
+
+            
+            script {
+ 
+                  withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'aws_creds', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+                  sh'''
+                     ansible-playbook -vv main.yml
+                     '''
+        
+                  }
+            }
+ 
+      }
+
+   } 
+
+    post {
+            failure {
+               emailext body: 'Check console output at $BUILD_URL to view the results. \n\n ${CHANGES} \n\n -------------------------------------------------- \n${BUILD_LOG, maxLines=100, escapeHtml=false}',
+                        to: EMAIL_TO,
+                        subject: 'Build failed in Jenkins: #$BUILD_NUMBER'
+            }
+            unstable {
+               emailext body: 'Check console output at $BUILD_URL to view the results. \n\n ${CHANGES} \n\n -------------------------------------------------- \n${BUILD_LOG, maxLines=100, escapeHtml=false}',
+                        to: EMAIL_TO,
+                        subject: 'Unstable build in Jenkins: #$BUILD_NUMBER'
+            }
+            changed {
+               emailext body: 'Check console output at $BUILD_URL to view the results.',
+                        to: EMAIL_TO,
+                        subject: 'Jenkins build is back to normal: #$BUILD_NUMBER'
+            }
+
+   }
+}
+}
