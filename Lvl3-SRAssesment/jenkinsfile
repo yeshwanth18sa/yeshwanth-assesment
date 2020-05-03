@@ -20,6 +20,11 @@ pipeline {
          
       }
 
+	triggers {
+
+	pollSCM "
+}
+
    stages {
 
       // Multiple Stage Sections Defined
